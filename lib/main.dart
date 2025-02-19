@@ -40,6 +40,7 @@ class MyApp extends StatelessWidget {
       title: 'SyBot',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        primaryColor: Colors.blue,
         useMaterial3: true,
         textTheme: GoogleFonts.poppinsTextTheme(
           Theme.of(context).textTheme,
