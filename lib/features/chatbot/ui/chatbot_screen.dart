@@ -31,30 +31,26 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   bool _isListening = false;
   final TextEditingController _textController = TextEditingController();
   final String _systemPrompt =
-      '''You are a helpful assistant. Follow these rules strictly:
+      '''You are a helpful assistant. You MUST follow these rules:
 
-1. If user writes in English: MUST respond in English only
-2. If user writes in Hindi: MUST convert to Devanagari and respond in Devanagari only
-3. If user writes in Bengali: MUST convert to Bengali and respond in Bengali only
-4. For other languages: Use their native script only
+IMPORTANT: Respond ONLY with a valid JSON object, no markdown, no code blocks, no additional text.
 
-CRITICAL: Response MUST be in the SAME LANGUAGE as the input message.
-Example:
-- English input gets English response
-- Hindi input gets Hindi response
+JSON format must be:
+{
+  "user_message": {
+    "text": "<original text>",
+    "script": "<converted text in appropriate script>"
+  },
+  "response": "<response in same script as user_message.script>"
+}
 
-Format:
-user: <Text in appropriate script>
-response: <Response in SAME language/script as user>
+Language rules:
+- English: Respond in English
+- Hindi: Convert to Devanagari and respond in Devanagari
+- Bengali: Convert to Bengali and respond in Bengali
+- Other languages: Use their native script
 
-Examples:
-"you talk nicely" ->
-user: you talk nicely
-response: Thank you! I aim to be clear and helpful in our conversations.
-
-"aap acche ho" ->
-user: आप अच्छे हो
-response: धन्यवाद! मैं आपकी सहायता करने की पूरी कोशिश करता हूं।''';
+Response MUST be in the SAME LANGUAGE as the input message.''';
 
   @override
   void initState() {
@@ -123,16 +119,19 @@ Assistant: '''
         final data = json.decode(response.body);
         String modelResponse =
             data['candidates'][0]['content']['parts'][0]['text'];
-        print('Model response: $modelResponse');
 
-        // Parse user and response messages
-        final userMatch = RegExp(r'user: (.+)').firstMatch(modelResponse);
-        final responseMatch =
-            RegExp(r'response: (.+)').firstMatch(modelResponse);
+        try {
+          // Clean the response if it contains markdown markers
+          modelResponse = modelResponse
+              .replaceAll('```json', '')
+              .replaceAll('```', '')
+              .trim();
 
-        if (userMatch != null && responseMatch != null) {
-          final userText = userMatch.group(1)!.trim();
-          final botResponse = responseMatch.group(1)!.trim();
+          print('Cleaned response: $modelResponse');
+
+          final parsedResponse = json.decode(modelResponse);
+          final userText = parsedResponse['user_message']['script'];
+          final botResponse = parsedResponse['response'];
 
           setState(() {
             _messages.add(Message(
@@ -148,6 +147,9 @@ Assistant: '''
           });
           _scrollToBottom();
           _textController.clear();
+        } catch (e) {
+          print('Error parsing response: $e');
+          print('Raw response: $modelResponse');
         }
       }
     } catch (e) {
@@ -168,126 +170,206 @@ Assistant: '''
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('AI Chat')),
-      body: Column(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text('AI Chat'),
+      ),
+      body: Stack(
         children: [
-          Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(16),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final message = _messages[index];
-                return Align(
-                  alignment: message.isUser
-                      ? Alignment.centerRight
-                      : Alignment.centerLeft,
-                  child: Container(
-                    constraints: BoxConstraints(
-                      maxWidth: MediaQuery.of(context).size.width * 0.75,
-                    ),
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: message.isUser ? Colors.blue : Colors.grey[200],
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      message.text,
-                      style: TextStyle(
-                        color: message.isUser ? Colors.white : Colors.black,
+          Column(
+            children: [
+              Expanded(
+                child: _messages.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Image.asset(
+                              'assets/images/splash.jpg',
+                              width: 80,
+                              height: 80,
+                            ),
+                            const SizedBox(height: 20),
+                            const Text(
+                              'Start a conversation!',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              margin:
+                                  const EdgeInsets.symmetric(horizontal: 20),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[50],
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Try asking:',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.w500)),
+                                  SizedBox(height: 8),
+                                  Text('• What can you help me with?'),
+                                  Text('• Tell me a joke'),
+                                  Text('• नमस्ते, कैसे हो आप?'),
+                                  Text('• তুমি কেমন আছো?'),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.builder(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.only(
+                          left: 16,
+                          right: 16,
+                          top: 16,
+                          bottom: 100,
+                        ),
+                        itemCount: _messages.length,
+                        itemBuilder: (context, index) {
+                          final message = _messages[index];
+                          return Align(
+                            alignment: message.isUser
+                                ? Alignment.centerRight
+                                : Alignment.centerLeft,
+                            child: Container(
+                              constraints: BoxConstraints(
+                                maxWidth:
+                                    MediaQuery.of(context).size.width * 0.75,
+                              ),
+                              margin: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: message.isUser
+                                    ? Colors.blue
+                                    : Colors.grey[200],
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                message.text,
+                                style: TextStyle(
+                                  color: message.isUser
+                                      ? Colors.white
+                                      : Colors.black,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
                       ),
+              ),
+            ],
+          ),
+          Positioned(
+            bottom: 20,
+            left: 16,
+            right: 16,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(30),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.3),
+                    spreadRadius: 2,
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _textController,
+                      decoration: InputDecoration(
+                        hintText: 'Type your message...',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(25),
+                          borderSide: BorderSide.none,
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey[100],
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 10,
+                        ),
+                      ),
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: (text) {
+                        if (text.trim().isNotEmpty) {
+                          _sendToGemini(text);
+                        }
+                      },
                     ),
                   ),
-                );
-              },
+                  const SizedBox(width: 8),
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    decoration: BoxDecoration(
+                      color: _isListening
+                          ? Colors.red.withOpacity(0.8)
+                          : Colors.blue,
+                      borderRadius: BorderRadius.circular(25),
+                      boxShadow: _isListening
+                          ? [
+                              BoxShadow(
+                                color: Colors.red.withOpacity(0.3),
+                                spreadRadius: 4,
+                                blurRadius: 8,
+                              )
+                            ]
+                          : null,
+                    ),
+                    child: IconButton(
+                      icon: Icon(
+                        _isListening ? Icons.stop : Icons.mic,
+                        color: Colors.white,
+                      ),
+                      onPressed: _toggleListening,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.blue,
+                      borderRadius: BorderRadius.circular(25),
+                    ),
+                    child: IconButton(
+                      icon: const Icon(
+                        Icons.send,
+                        color: Colors.white,
+                      ),
+                      onPressed: () {
+                        if (_textController.text.trim().isNotEmpty) {
+                          _sendToGemini(_textController.text);
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.2),
-                  spreadRadius: 1,
-                  blurRadius: 5,
-                  offset: const Offset(0, -1),
-                ),
-              ],
+          if (_isListening)
+            Positioned(
+              left: 100,
+              right: 100,
+              bottom: 100,
+              child: Lottie.asset(
+                'assets/images/recording.json',
+                width: 60,
+                height: 60,
+              ),
             ),
-            child: Column(
-              children: [
-                Lottie.asset(
-                  'assets/images/recording.json',
-                  width: 80,
-                  height: 40,
-                  repeat: _isListening,
-                ),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _textController,
-                        decoration: InputDecoration(
-                          hintText: 'Type your message...',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(25),
-                            borderSide: BorderSide.none,
-                          ),
-                          filled: true,
-                          fillColor: Colors.grey[100],
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 10,
-                          ),
-                        ),
-                        textInputAction: TextInputAction.send,
-                        onSubmitted: (text) {
-                          if (text.trim().isNotEmpty) {
-                            _sendToGemini(text);
-                          }
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.blue,
-                        borderRadius: BorderRadius.circular(25),
-                      ),
-                      child: IconButton(
-                        icon: Icon(
-                          _isListening ? Icons.stop : Icons.mic,
-                          color: Colors.white,
-                        ),
-                        onPressed: _toggleListening,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.blue,
-                        borderRadius: BorderRadius.circular(25),
-                      ),
-                      child: IconButton(
-                        icon: const Icon(
-                          Icons.send,
-                          color: Colors.white,
-                        ),
-                        onPressed: () {
-                          if (_textController.text.trim().isNotEmpty) {
-                            _sendToGemini(_textController.text);
-                          }
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );
