@@ -442,10 +442,9 @@ class BubblePainter extends CustomPainter {
         const Radius.circular(radius),
       ));
 
-      // Angled tail
       final tailCenter = size.width - 24.0;
       path.moveTo(tailCenter - tailWidth / 2, size.height - smallTail);
-      path.lineTo(tailCenter + 4, size.height); // Angled point
+      path.lineTo(tailCenter + 4, size.height);
       path.lineTo(tailCenter + tailWidth / 2, size.height - smallTail);
       path.close();
     } else {
