@@ -7,7 +7,6 @@ class AssistantService {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      showDragHandle: true,
       isDismissible: true,
       builder: (context) => const AssistantBottomSheet(),
     );
