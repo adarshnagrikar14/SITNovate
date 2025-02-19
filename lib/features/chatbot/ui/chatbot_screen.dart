@@ -5,6 +5,8 @@ import 'package:lottie/lottie.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
+import 'package:sybot/core/constants/api_keys.dart';
+
 class Message {
   final String text;
   final String? originalText;
@@ -107,7 +109,7 @@ Response MUST be in the SAME LANGUAGE as the input message.''';
         url,
         headers: {
           'Content-Type': 'application/json',
-          'x-goog-api-key': 'AIzaSyBrrZV1jVomWwNotN-5cehcN7aK7f2skDM',
+          'x-goog-api-key': ApiKeys.geminiApiKey,
         },
         body: json.encode({
           'contents': [

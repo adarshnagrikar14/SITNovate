@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:speech_to_text/speech_recognition_result.dart';
+import 'package:sybot/core/constants/api_keys.dart';
 
 class Message {
   final String text;
@@ -113,14 +114,14 @@ Response MUST be in the SAME LANGUAGE as the input message while maintaining cha
 
   Future<void> _sendToGemini(String text) async {
     final url = Uri.parse(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent');
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-thinking-exp-01-21:generateContent');
 
     try {
       final response = await http.post(
         url,
         headers: {
           'Content-Type': 'application/json',
-          'x-goog-api-key': 'AIzaSyBrrZV1jVomWwNotN-5cehcN7aK7f2skDM',
+          'x-goog-api-key': ApiKeys.geminiApiKey,
         },
         body: json.encode({
           'contents': [
@@ -150,6 +151,8 @@ Assistant: '''
               .trim();
 
           final parsedResponse = json.decode(modelResponse);
+
+          print('Parsed response: $parsedResponse');
           final userText = parsedResponse['user_message']['script'];
           final originalText = parsedResponse['user_message']['text'];
           final botResponse = parsedResponse['response'];

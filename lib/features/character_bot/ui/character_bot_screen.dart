@@ -161,7 +161,7 @@ class _CharacterBotScreenState extends State<CharacterBotScreen> {
           ),
         ),
         title: Text(
-          character.title,
+          character.title[0].toUpperCase() + character.title.substring(1),
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 18,
@@ -172,7 +172,8 @@ class _CharacterBotScreenState extends State<CharacterBotScreen> {
           children: [
             const SizedBox(height: 4),
             Text(
-              character.subtitle,
+              character.subtitle[0].toUpperCase() +
+                  character.subtitle.substring(1),
               style: TextStyle(color: Colors.grey[600]),
             ),
             const SizedBox(height: 8),
@@ -186,7 +187,8 @@ class _CharacterBotScreenState extends State<CharacterBotScreen> {
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
-                character.personality,
+                character.personality[0].toUpperCase() +
+                    character.personality.substring(1),
                 style: TextStyle(
                   color: Colors.grey[800],
                   fontSize: 12,
@@ -195,12 +197,15 @@ class _CharacterBotScreenState extends State<CharacterBotScreen> {
             ),
             const SizedBox(height: 4),
             Text(
-              character.description,
+              character.description[0].toUpperCase() +
+                  character.description.substring(1),
               style: TextStyle(
                 color: Colors.grey[500],
                 fontSize: 12,
                 fontStyle: FontStyle.italic,
               ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
