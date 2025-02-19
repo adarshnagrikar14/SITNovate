@@ -3,12 +3,15 @@ import 'package:sybot/core/routes/routes.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sybot/core/utils/system_chrome_utils.dart';
 import 'package:sybot/core/di/injection_container.dart' as di;
+import 'package:sybot/core/services/assistant_trigger_service.dart';
+import 'package:sybot/core/utils/global_context.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChromeUtils.setSystemUIOverlayStyle();
   SystemChromeUtils.setPreferredOrientations();
   await di.init();
+  await AssistantTriggerService.initialize();
   runApp(const MyApp());
 }
 
@@ -33,6 +36,7 @@ class MyApp extends StatelessWidget {
     //   ),
     // );
     return MaterialApp(
+      navigatorKey: GlobalContext.navigatorKey,
       title: 'SyBot',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
