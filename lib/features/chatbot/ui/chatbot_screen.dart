@@ -7,11 +7,13 @@ import 'dart:convert';
 
 class Message {
   final String text;
+  final String? originalText;
   final bool isUser;
   final DateTime timestamp;
 
   Message({
     required this.text,
+    this.originalText,
     required this.isUser,
     required this.timestamp,
   });
@@ -62,18 +64,24 @@ Response MUST be in the SAME LANGUAGE as the input message.''';
     if (!_isListening) {
       bool available = await _speech.initialize(
         onStatus: (status) {
-          if (status == 'notListening') {
+          if (status == 'notListening' && mounted) {
             setState(() => _isListening = false);
           }
         },
-        onError: (error) => setState(() => _isListening = false),
+        onError: (error) {
+          if (mounted) {
+            setState(() => _isListening = false);
+          }
+        },
       );
-      if (available) {
+      if (available && mounted) {
         setState(() => _isListening = true);
         _speech.listen(onResult: _onSpeechResult);
       }
     } else {
-      setState(() => _isListening = false);
+      if (mounted) {
+        setState(() => _isListening = false);
+      }
       _speech.stop();
     }
   }
@@ -81,8 +89,10 @@ Response MUST be in the SAME LANGUAGE as the input message.''';
   void _onSpeechResult(SpeechRecognitionResult result) async {
     if (result.finalResult) {
       _speech.stop();
-      setState(() => _isListening = false);
-      await _sendToGemini(result.recognizedWords);
+      if (mounted) {
+        setState(() => _isListening = false);
+        await _sendToGemini(result.recognizedWords);
+      }
     }
   }
 
@@ -131,11 +141,13 @@ Assistant: '''
 
           final parsedResponse = json.decode(modelResponse);
           final userText = parsedResponse['user_message']['script'];
+          final originalText = parsedResponse['user_message']['text'];
           final botResponse = parsedResponse['response'];
 
           setState(() {
             _messages.add(Message(
               text: userText,
+              originalText: originalText,
               isUser: true,
               timestamp: DateTime.now(),
             ));
@@ -165,6 +177,58 @@ Assistant: '''
         curve: Curves.easeOut,
       );
     });
+  }
+
+  Widget _buildMessageBubble(Message message) {
+    return Align(
+      alignment: message.isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: CustomPaint(
+        painter: BubblePainter(
+          isUser: message.isUser,
+          color: message.isUser ? Colors.blue : Colors.grey[200]!,
+        ),
+        child: Container(
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width * 0.75,
+          ),
+          margin: EdgeInsets.only(
+            bottom: 8,
+            right: message.isUser ? 8 : 0,
+            left: message.isUser ? 0 : 8,
+          ),
+          padding: const EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 10,
+            bottom: 10,
+          ),
+          child: Column(
+            crossAxisAlignment: message.isUser
+                ? CrossAxisAlignment.end
+                : CrossAxisAlignment.start,
+            children: [
+              Text(
+                message.text,
+                style: TextStyle(
+                  color: message.isUser ? Colors.white : Colors.black,
+                ),
+              ),
+              if (message.isUser && message.originalText != null)
+                Text(
+                  message.originalText!,
+                  style: TextStyle(
+                    color: message.isUser
+                        ? Colors.white.withOpacity(0.7)
+                        : Colors.black54,
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -232,37 +296,8 @@ Assistant: '''
                           bottom: 100,
                         ),
                         itemCount: _messages.length,
-                        itemBuilder: (context, index) {
-                          final message = _messages[index];
-                          return Align(
-                            alignment: message.isUser
-                                ? Alignment.centerRight
-                                : Alignment.centerLeft,
-                            child: Container(
-                              constraints: BoxConstraints(
-                                maxWidth:
-                                    MediaQuery.of(context).size.width * 0.75,
-                              ),
-                              margin: const EdgeInsets.only(bottom: 8),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 10),
-                              decoration: BoxDecoration(
-                                color: message.isUser
-                                    ? Colors.blue
-                                    : Colors.grey[200],
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                message.text,
-                                style: TextStyle(
-                                  color: message.isUser
-                                      ? Colors.white
-                                      : Colors.black,
-                                ),
-                              ),
-                            ),
-                          );
-                        },
+                        itemBuilder: (context, index) =>
+                            _buildMessageBubble(_messages[index]),
                       ),
               ),
             ],
@@ -378,8 +413,58 @@ Assistant: '''
   @override
   void dispose() {
     _textController.dispose();
-    _speech.stop();
+    _speech.cancel();
     _scrollController.dispose();
     super.dispose();
   }
+}
+
+class BubblePainter extends CustomPainter {
+  final bool isUser;
+  final Color color;
+
+  BubblePainter({required this.isUser, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final path = Path();
+    const radius = 20.0;
+    const smallTail = 8.0;
+    const tailWidth = 8.0;
+
+    if (isUser) {
+      path.addRRect(RRect.fromRectAndRadius(
+        Rect.fromLTWH(0, 0, size.width, size.height - smallTail),
+        const Radius.circular(radius),
+      ));
+
+      // Angled tail
+      final tailCenter = size.width - 24.0;
+      path.moveTo(tailCenter - tailWidth / 2, size.height - smallTail);
+      path.lineTo(tailCenter + 4, size.height); // Angled point
+      path.lineTo(tailCenter + tailWidth / 2, size.height - smallTail);
+      path.close();
+    } else {
+      path.addRRect(RRect.fromRectAndRadius(
+        Rect.fromLTWH(0, 0, size.width, size.height - smallTail),
+        const Radius.circular(radius),
+      ));
+
+      // Angled tail
+      const tailCenter = 24.0;
+      path.moveTo(tailCenter - tailWidth / 2, size.height - smallTail);
+      path.lineTo(tailCenter - 4, size.height); // Angled point
+      path.lineTo(tailCenter + tailWidth / 2, size.height - smallTail);
+      path.close();
+    }
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
