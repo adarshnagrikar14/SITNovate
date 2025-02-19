@@ -16,9 +16,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final _screens = [
     const ChatBotScreen(),
-    const LearningBotScreen(),
     const CharacterBotScreen(),
     const StoryScreen(),
+    const LearningBotScreen(),
   ];
 
   @override
@@ -36,11 +36,6 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'ChatBot',
           ),
           NavigationDestination(
-            icon: Icon(Icons.school_outlined),
-            selectedIcon: Icon(Icons.school),
-            label: 'Learning',
-          ),
-          NavigationDestination(
             icon: Icon(Icons.person_outline),
             selectedIcon: Icon(Icons.person),
             label: 'Character',
@@ -49,6 +44,11 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icon(Icons.book_outlined),
             selectedIcon: Icon(Icons.book),
             label: 'Story',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.school_outlined),
+            selectedIcon: Icon(Icons.school),
+            label: 'Learning',
           ),
         ],
       ),
