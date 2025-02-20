@@ -2,13 +2,13 @@ import 'dart:convert';
 import 'package:lottie/lottie.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:sybot/core/constants/api_keys.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:sybot/features/character_bot/models/character_model.dart';
 import 'package:sybot/features/character_bot/services/character_service.dart';
-import 'package:flutter_tts/flutter_tts.dart';
 
 class Message {
   final String text;
@@ -102,6 +102,7 @@ class _AssistantBottomSheetState extends State<AssistantBottomSheet> {
         await _flutterTts.setSpeechRate(0.5);
         break;
       case 'jethalal':
+      case 'shri ram':
         await _flutterTts.setLanguage("hi-IN");
         await _flutterTts
             .setVoice({"name": "hi-in-x-hid-local", "locale": "hi-IN"});
