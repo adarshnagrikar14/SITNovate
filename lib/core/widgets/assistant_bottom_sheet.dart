@@ -44,29 +44,11 @@ class _AssistantBottomSheetState extends State<AssistantBottomSheet> {
 
   String get _systemPrompt {
     if (_selectedCharacter == null) return '';
-    return '''You are ${_selectedCharacter!.subtitle}. ${_selectedCharacter!.description}
-                
-Character traits: ${_selectedCharacter!.personality}
-
-Stay in character and only respond about topics related to being ${_selectedCharacter!.title}.
-
-IMPORTANT: Respond ONLY with a valid JSON object, no markdown, no code blocks, no additional text.
-Language rules:
-- English: Respond in English
-- Hindi: Convert to Devanagari and respond in Devanagari
-- Bengali: Convert to Bengali and respond in Bengali
-- Other languages: Use their native script
-
-JSON format must be:
-{
-  "user_message": {
-    "text": "<original text>",
-    "script": "<converted text in appropriate script>"
-  },
-  "response": "<response in same script as user_message.script while maintaining character personality and maintain punctuations>"
-}
-
-Response MUST be in the SAME LANGUAGE as the input message while maintaining character personality.''';
+    return ApiKeys.systemPrompt
+        .replaceAll('{subtitle}', _selectedCharacter!.subtitle)
+        .replaceAll('{description}', _selectedCharacter!.description)
+        .replaceAll('{personality}', _selectedCharacter!.personality)
+        .replaceAll('{title}', _selectedCharacter!.title);
   }
 
   @override

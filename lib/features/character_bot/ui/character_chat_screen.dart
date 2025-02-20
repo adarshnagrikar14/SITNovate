@@ -48,27 +48,13 @@ class _CharacterChatScreenState extends State<CharacterChatScreen> {
   bool _isListening = false;
   final TextEditingController _textController = TextEditingController();
 
-  String get _systemPrompt =>
-      '''You are ${widget.character}. ${widget.personality}
-You MUST stay in character at all times and only respond about topics related to your character.
-
-IMPORTANT: Respond ONLY with a valid JSON object, no markdown, no code blocks, no additional text.
-Language rules:
-- English: Respond in English
-- Hindi: Convert to Devanagari and respond in Devanagari
-- Bengali: Convert to Bengali and respond in Bengali
-- Other languages: Use their native script
-
-JSON format must be:
-{
-  "user_message": {
-    "text": "<original text>",
-    "script": "<converted text in appropriate script>"
-  },
-  "response": "<response in same script as user_message.script while maintaining character personality>"
-}
-
-Response MUST be in the SAME LANGUAGE as the input message while maintaining character personality.''';
+  String get _systemPrompt {
+    return ApiKeys.systemPrompt
+        .replaceAll('{subtitle}', widget.character)
+        .replaceAll('{description}', widget.personality)
+        .replaceAll('{personality}', widget.personality)
+        .replaceAll('{title}', widget.title);
+  }
 
   @override
   void initState() {

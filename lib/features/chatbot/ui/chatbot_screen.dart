@@ -34,27 +34,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   late stt.SpeechToText _speech;
   bool _isListening = false;
   final TextEditingController _textController = TextEditingController();
-  final String _systemPrompt =
-      '''You are a helpful assistant. You MUST follow these rules:
-
-IMPORTANT: Respond ONLY with a valid JSON object, no markdown, no code blocks, no additional text.
-
-JSON format must be:
-{
-  "user_message": {
-    "text": "<original text>",
-    "script": "<converted text in appropriate script>"
-  },
-  "response": "<response in same script as user_message.script>"
-}
-
-Language rules:
-- English: Respond in English
-- Hindi: Convert to Devanagari and respond in Devanagari
-- Bengali: Convert to Bengali and respond in Bengali
-- Other languages: Use their native script
-
-Response MUST be in the SAME LANGUAGE as the input message.''';
+  final String _systemPrompt = ApiKeys.chatbotPrompt;
 
   @override
   void initState() {
