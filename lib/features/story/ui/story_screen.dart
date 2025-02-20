@@ -79,7 +79,7 @@ class _StoryScreenState extends State<StoryScreen> {
             TextFormField(
               controller: _personalityController,
               decoration: const InputDecoration(
-                labelText: 'Personality Traits (separate with •)',
+                labelText: 'Personality Traits (separate with ,)',
                 border: OutlineInputBorder(),
               ),
               validator: (v) => v?.isEmpty ?? true ? 'Required' : null,

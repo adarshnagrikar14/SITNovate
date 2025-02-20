@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:sybot/features/character_bot/models/character_model.dart';
 import 'package:sybot/features/character_bot/services/character_service.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 
 class Message {
   final String text;
@@ -38,6 +39,8 @@ class _AssistantBottomSheetState extends State<AssistantBottomSheet> {
   late CharacterModel? _selectedCharacter;
   List<CharacterModel> _characters = [];
   bool _isLoading = true;
+  late FlutterTts _flutterTts;
+  bool _isSpeaking = false;
 
   String get _systemPrompt {
     if (_selectedCharacter == null) return '';
@@ -60,7 +63,7 @@ JSON format must be:
     "text": "<original text>",
     "script": "<converted text in appropriate script>"
   },
-  "response": "<response in same script as user_message.script while maintaining character personality>"
+  "response": "<response in same script as user_message.script while maintaining character personality and maintain punctuations>"
 }
 
 Response MUST be in the SAME LANGUAGE as the input message while maintaining character personality.''';
@@ -70,7 +73,82 @@ Response MUST be in the SAME LANGUAGE as the input message while maintaining cha
   void initState() {
     super.initState();
     _speech = stt.SpeechToText();
+    _initTts();
     _loadCharacters();
+  }
+
+  Future<void> _initTts() async {
+    _flutterTts = FlutterTts();
+    await _flutterTts.setLanguage("en-US");
+
+    // Default voice settings
+    await _flutterTts.setSpeechRate(0.6);
+    await _flutterTts.setVolume(1.0);
+
+    // Get available voices
+    final List<dynamic>? voices = await _flutterTts.getVoices;
+    if (voices != null) {
+      print('Available voices: $voices');
+    }
+
+    _flutterTts.setCompletionHandler(() {
+      setState(() => _isSpeaking = false);
+    });
+  }
+
+  Future<void> _setVoiceForCharacter(CharacterModel character) async {
+    switch (character.title.toLowerCase()) {
+      case 'grumpy banker':
+        await _flutterTts.setLanguage("en-US");
+        await _flutterTts
+            .setVoice({"name": "en-us-x-sfb-local", "locale": "en-US"});
+        await _flutterTts.setPitch(0.9);
+        await _flutterTts.setSpeechRate(0.6);
+        break;
+      case 'iron man':
+        await _flutterTts.setLanguage("en-US");
+        await _flutterTts
+            .setVoice({"name": "en-us-x-sfb-local", "locale": "en-US"});
+        await _flutterTts.setPitch(1.1);
+        await _flutterTts.setSpeechRate(0.55);
+        break;
+      case 'harvey spectre':
+        await _flutterTts.setLanguage("en-US");
+        await _flutterTts
+            .setVoice({"name": "en-us-x-sfb-local", "locale": "en-US"});
+        await _flutterTts.setPitch(0.95);
+        await _flutterTts.setSpeechRate(0.5);
+        break;
+      case 'jethalal':
+        await _flutterTts.setLanguage("hi-IN");
+        await _flutterTts
+            .setVoice({"name": "hi-in-x-hid-local", "locale": "hi-IN"});
+        await _flutterTts.setPitch(1.0);
+        await _flutterTts.setSpeechRate(0.5);
+        break;
+      default:
+        await _flutterTts.setLanguage("en-US");
+        await _flutterTts
+            .setVoice({"name": "en-us-x-tpf-local", "locale": "en-US"});
+        await _flutterTts.setPitch(1.0);
+        await _flutterTts.setSpeechRate(0.5);
+    }
+  }
+
+  Future<void> _speak(String text) async {
+    if (_isSpeaking) {
+      await _flutterTts.stop();
+      setState(() => _isSpeaking = false);
+      return;
+    }
+
+    // Set voice for current character before speaking
+    if (_selectedCharacter != null) {
+      await _setVoiceForCharacter(_selectedCharacter!);
+    }
+
+    setState(() => _isSpeaking = true);
+    await _flutterTts.speak(text);
   }
 
   Future<void> _loadCharacters() async {
@@ -90,6 +168,7 @@ Response MUST be in the SAME LANGUAGE as the input message while maintaining cha
 
   @override
   void dispose() {
+    _flutterTts.stop();
     _speech.cancel();
     _scrollController.dispose();
     super.dispose();
@@ -188,6 +267,9 @@ Assistant: '''
             ));
           });
           _scrollToBottom();
+
+          // Speak the response
+          await _speak(botResponse);
         } catch (e) {
           print('Error parsing response: $e');
         }
@@ -231,7 +313,11 @@ Assistant: '''
           final isSelected = character == _selectedCharacter;
 
           return GestureDetector(
-            onTap: () => setState(() => _selectedCharacter = character),
+            onTap: () async {
+              setState(() => _selectedCharacter = character);
+              // Update voice when character is selected
+              await _setVoiceForCharacter(character);
+            },
             child: Container(
               width: 70,
               margin: const EdgeInsets.only(right: 12),
@@ -388,13 +474,15 @@ Assistant: '''
               );
             },
           ),
-          if (_isListening)
+          if (_isListening || _isSpeaking)
             Positioned(
               left: 100,
               right: 100,
               bottom: 100,
               child: Lottie.asset(
-                'assets/images/recording.json',
+                _isListening
+                    ? 'assets/images/recording.json'
+                    : 'assets/images/recording.json',
                 width: 60,
                 height: 60,
               ),
@@ -452,52 +540,55 @@ Assistant: '''
   Widget _buildMessageBubble(Message message) {
     return Align(
       alignment: message.isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: CustomPaint(
-        painter: BubblePainter(
-          isUser: message.isUser,
-          color: message.isUser
-              ? _selectedCharacter?.color ?? Colors.blue
-              : Colors.grey[200]!,
-        ),
-        child: Container(
-          constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width * 0.75,
+      child: GestureDetector(
+        onTap: () => !message.isUser ? _speak(message.text) : null,
+        child: CustomPaint(
+          painter: BubblePainter(
+            isUser: message.isUser,
+            color: message.isUser
+                ? _selectedCharacter?.color ?? Colors.blue
+                : Colors.grey[200]!,
           ),
-          margin: EdgeInsets.only(
-            bottom: 12,
-            right: message.isUser ? 8 : 0,
-            left: message.isUser ? 0 : 8,
-          ),
-          padding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 12,
-          ),
-          child: Column(
-            crossAxisAlignment: message.isUser
-                ? CrossAxisAlignment.end
-                : CrossAxisAlignment.start,
-            children: [
-              Text(
-                message.text,
-                style: TextStyle(
-                  color: message.isUser ? Colors.white : Colors.black87,
-                  fontSize: 13,
-                ),
-              ),
-              if (message.isUser && message.originalText != null) ...[
-                const SizedBox(height: 4),
+          child: Container(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.75,
+            ),
+            margin: EdgeInsets.only(
+              bottom: 12,
+              right: message.isUser ? 8 : 0,
+              left: message.isUser ? 0 : 8,
+            ),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
+            child: Column(
+              crossAxisAlignment: message.isUser
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
+              children: [
                 Text(
-                  message.originalText!,
+                  message.text,
                   style: TextStyle(
-                    color: message.isUser
-                        ? Colors.white.withOpacity(0.7)
-                        : Colors.black54,
-                    fontSize: 10,
-                    fontStyle: FontStyle.italic,
+                    color: message.isUser ? Colors.white : Colors.black87,
+                    fontSize: 13,
                   ),
                 ),
+                if (message.isUser && message.originalText != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    message.originalText!,
+                    style: TextStyle(
+                      color: message.isUser
+                          ? Colors.white.withOpacity(0.7)
+                          : Colors.black54,
+                      fontSize: 10,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
